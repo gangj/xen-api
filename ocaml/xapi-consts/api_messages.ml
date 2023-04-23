@@ -319,37 +319,47 @@ let host_internal_certificate_expired =
 
 let pool_ca_certificate_expired = addMessage "POOL_CA_CERTIFICATE_EXPIRED" 1L
 
-let certificate_expiring base days prio =
+let under_expiring base days prio =
   addMessage (Printf.sprintf "%s_%02d" base days) prio
 
 let host_server_certificate_expiring_30 =
-  certificate_expiring host_server_certificate_expiring 30 3L
+  under_expiring host_server_certificate_expiring 30 3L
 
 let host_server_certificate_expiring_14 =
-  certificate_expiring host_server_certificate_expiring 14 2L
+  under_expiring host_server_certificate_expiring 14 2L
 
 let host_server_certificate_expiring_07 =
-  certificate_expiring host_server_certificate_expiring 7 1L
+  under_expiring host_server_certificate_expiring 7 1L
 
 let pool_ca_certificate_expiring_30 =
-  certificate_expiring pool_ca_certificate_expiring 30 3L
+  under_expiring pool_ca_certificate_expiring 30 3L
 
 let pool_ca_certificate_expiring_14 =
-  certificate_expiring pool_ca_certificate_expiring 14 2L
+  under_expiring pool_ca_certificate_expiring 14 2L
 
 let pool_ca_certificate_expiring_07 =
-  certificate_expiring pool_ca_certificate_expiring 7 1L
+  under_expiring pool_ca_certificate_expiring 7 1L
 
 let host_internal_certificate_expiring_30 =
-  certificate_expiring host_internal_certificate_expiring 30 3L
+  under_expiring host_internal_certificate_expiring 30 3L
 
 let host_internal_certificate_expiring_14 =
-  certificate_expiring host_internal_certificate_expiring 14 2L
+  under_expiring host_internal_certificate_expiring 14 2L
 
 let host_internal_certificate_expiring_07 =
-  certificate_expiring host_internal_certificate_expiring 7 1L
+  under_expiring host_internal_certificate_expiring 7 1L
 
 let failed_login_attempts = addMessage "FAILED_LOGIN_ATTEMPTS" 3L
 
 let tls_verification_emergency_disabled =
   addMessage "TLS_VERIFICATION_EMERGENCY_DISABLED" 3L
+
+let css_expiring = "CSS_EXPIRING"
+
+let css_expiring_30 = under_expiring css_expiring 30 3L
+
+let css_expiring_14 = under_expiring css_expiring 14 2L
+
+let css_expiring_07 = under_expiring css_expiring 7 1L
+
+let css_expired = addMessage "CSS_EXPIRED" 1L
