@@ -766,22 +766,41 @@ let apply_updates' ~__context ~host ~updates_info ~livepatches ~acc_rpm_updates
       ) ;
   (* Evaluate recommended/pending guidances *)
   let recommended_guidances, pending_guidances =
-    let recommended_guidances' =
+    let recommended_gs =
       (* EvacuateHost will be applied before applying updates *)
       eval_guidances ~updates_info ~updates:acc_rpm_updates ~kind:Recommended
         ~livepatches:successful_livepatches ~failed_livepatches
-        ~unapplied_guidances:
-          (Db.Host.get_recommended_guidances ~__context ~self:host)
       |> List.filter (fun g -> g <> Guidance.EvacuateHost)
     in
+    let unapplied_gs =
+      List.fold_left
+        (fun acc g -> GuidanceSet.add (Guidance.of_update_guidance g) acc)
+        GuidanceSet.empty
+        (Db.Host.get_recommended_guidances ~__context ~self:host)
+    in
+    let recommended_guidances' =
+      GuidanceSet.union (GuidanceSet.of_list recommended_gs) unapplied_gs
+      |> GuidanceSet.resort_guidances ~kind:Recommended
+      |> GuidanceSet.elements
+    in
 
-    let pending_guidances' =
+    let pending_gs =
       eval_guidances ~updates_info ~updates:acc_rpm_updates ~kind:Absolute
         ~livepatches:[] ~failed_livepatches:[]
-        ~unapplied_guidances:
-          (Db.Host.get_pending_guidances ~__context ~self:host)
       |> List.filter (fun g -> not (List.mem g recommended_guidances'))
     in
+    let unapplied_gs =
+      List.fold_left
+        (fun acc g -> GuidanceSet.add (Guidance.of_update_guidance g) acc)
+        GuidanceSet.empty
+        (Db.Host.get_pending_guidances ~__context ~self:host)
+    in
+    let pending_guidances' =
+      GuidanceSet.union (GuidanceSet.of_list pending_gs) unapplied_gs
+      |> GuidanceSet.resort_guidances ~kind:Absolute
+      |> GuidanceSet.elements
+    in
+
     match failed_livepatches with
     | [] ->
         (* No livepatch should be applicable now *)
