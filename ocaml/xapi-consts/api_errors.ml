@@ -1276,9 +1276,6 @@ let invalid_repository_proxy_credential = "INVALID_REPOSITORY_PROXY_CREDENTIAL"
 
 let apply_livepatch_failed = "APPLY_LIVEPATCH_FAILED"
 
-let updates_require_recommended_guidance =
-  "UPDATES_REQUIRE_RECOMMENDED_GUIDANCE"
-
 let update_guidance_changed = "UPDATE_GUIDANCE_CHANGED"
 
 let invalid_update_sync_day = "INVALID_UPDATE_SYNC_DAY"

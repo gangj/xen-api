@@ -742,17 +742,10 @@ let apply_updates' ~__context ~host ~updates_info ~livepatches ~acc_rpm_updates
         |> List.filter (fun g -> g <> Guidance.RebootHost)
         |> List.cons Guidance.RebootHostOnLivePatchFailure
   in
-  List.iter
-    (fun g -> debug "pending_guidance: %s" (Guidance.to_string g))
-    guidances ;
   set_pending_guidances ~__context ~host ~guidances ;
-  ( guidances
-  , List.map
-      (fun (lp, _) ->
-        [Api_errors.apply_livepatch_failed; LivePatch.to_string lp]
-      )
-      failed_livepatches
-  )
+  List.map
+    (fun (lp, _) -> [Api_errors.apply_livepatch_failed; LivePatch.to_string lp])
+    failed_livepatches
 
 let apply_updates ~__context ~host ~hash =
   (* This function runs on coordinator host *)
@@ -781,7 +774,7 @@ let apply_updates ~__context ~host ~hash =
         | [], [] ->
             let host' = Ref.string_of host in
             info "Host ref='%s' is already up to date." host' ;
-            ([], [])
+            []
         | _ ->
             let repository_name =
               get_repository_name ~__context ~self:repository
