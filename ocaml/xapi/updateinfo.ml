@@ -67,6 +67,23 @@ module Guidance = struct
         RestartToolstack
     | `restart_device_model ->
         RestartDeviceModel
+
+  let to_update_guidance = function
+    | RebootHost ->
+        `reboot_host
+    | RebootHostOnLivePatchFailure ->
+        `reboot_host_on_livepatch_failure
+    | RestartToolstack ->
+        `restart_toolstack
+    | RestartDeviceModel ->
+        `restart_device_model
+    | EvacuateHost ->
+        error "EvacuateHost is not a valid update_guidance" ;
+        raise
+          Api_errors.(
+            Server_error
+              (internal_error, ["EvacuateHost is not a valid update_guidance"])
+          )
 end
 
 module Applicability = struct

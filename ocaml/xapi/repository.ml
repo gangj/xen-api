@@ -622,46 +622,18 @@ let apply_livepatch ~__context ~host:_ ~component ~base_build_id ~base_version
       error "%s" msg ;
       raise Api_errors.(Server_error (internal_error, [msg]))
 
-let set_restart_device_models ~__context ~host =
+let set_restart_device_models ~__context ~host ~value =
   (* Set pending restart device models of all running HVM VMs on the host *)
   do_with_device_models ~__context ~host @@ fun (ref, record) ->
   match
     (record.API.vM_power_state, Helpers.has_qemu_currently ~__context ~self:ref)
   with
   | `Running, true | `Paused, true ->
-      Db.VM.set_pending_guidances ~__context ~self:ref
-        ~value:[`restart_device_model] ;
+      Db.VM.set_pending_guidances ~__context ~self:ref ~value ;
       None
   | _ ->
       (* No device models are running for this VM *)
       None
-
-let set_guidances ~__context ~host ~guidances ~db_set =
-  let open Guidance in
-  guidances
-  |> List.fold_left
-       (fun acc g ->
-         match g with
-         | RebootHost ->
-             `reboot_host :: acc
-         | RestartToolstack ->
-             `restart_toolstack :: acc
-         | RestartDeviceModel ->
-             set_restart_device_models ~__context ~host ;
-             acc
-         | RebootHostOnLivePatchFailure ->
-             `reboot_host_on_livepatch_failure :: acc
-         | _ ->
-             warn "Unsupported pending guidance %s, ignoring it."
-               (Guidance.to_string g) ;
-             acc
-       )
-       []
-  |> fun gs -> db_set ~__context ~self:host ~value:gs
-
-let set_pending_guidances ~__context ~host ~guidances =
-  set_guidances ~__context ~host ~guidances
-    ~db_set:Db.Host.set_pending_guidances
 
 let apply_livepatches' ~__context ~host ~livepatches =
   List.partition_map
@@ -693,6 +665,88 @@ let apply_livepatches' ~__context ~host ~livepatches =
           Right (lp, lps)
     )
     livepatches
+
+(** [guidances] is the filtered guidances, by GuidanceSet.resort_guidances, after applying updates *)
+let update_pending_guidances ~__context ~host ~guidances =
+  let open Guidance in
+  let open GuidanceSet in
+  let host_guidance_db_handlers =
+    [
+      ( RebootHost
+      , (Db.Host.add_pending_guidances, Db.Host.remove_pending_guidances)
+      )
+    ; ( RestartToolstack
+      , (Db.Host.add_pending_guidances, Db.Host.remove_pending_guidances)
+      )
+    ; ( RebootHostOnLivePatchFailure
+      , (Db.Host.add_pending_guidances, Db.Host.remove_pending_guidances)
+      )
+    ]
+  in
+
+  let db_handler_not_found g =
+    let guidance_str = Guidance.to_string g in
+    error "Missing db handlers for host guidance: %s" guidance_str ;
+    raise
+      Api_errors.(
+        Server_error
+          ( internal_error
+          , ["Missing db handlers for host guidance: " ^ guidance_str]
+          )
+      )
+  in
+
+  List.iter
+    (fun g ->
+      (* set the guidance to DB *)
+      ( match g with
+      | RestartDeviceModel ->
+          set_restart_device_models ~__context ~host
+            ~value:[`restart_device_model]
+      | host_guidance -> (
+        try
+          List.assoc host_guidance host_guidance_db_handlers
+          |> fun (db_add, db_remove) ->
+          let update_guidance = Guidance.to_update_guidance host_guidance in
+
+          (* remove if already exists *)
+          db_remove ~__context ~self:host ~value:update_guidance ;
+
+          db_add ~__context ~self:host ~value:update_guidance
+        with
+        | Not_found ->
+            db_handler_not_found host_guidance
+        | e ->
+            raise e
+      )
+      ) ;
+
+      (* remove any guidance preceded by this guidance *)
+      match List.assoc_opt g GuidanceSet.precedences with
+      | Some guidances ->
+          guidances
+          |> elements
+          |> List.iter (fun g ->
+                 match g with
+                 | RestartDeviceModel ->
+                     set_restart_device_models ~__context ~host ~value:[]
+                 | host_guidance -> (
+                   try
+                     List.assoc host_guidance host_guidance_db_handlers
+                     |> fun (_, db_remove) ->
+                     db_remove ~__context ~self:host
+                       ~value:(Guidance.to_update_guidance host_guidance)
+                   with
+                   | Not_found ->
+                       db_handler_not_found host_guidance
+                   | e ->
+                       raise e
+                 )
+             )
+      | None ->
+          ()
+    )
+    guidances
 
 let apply_updates' ~__context ~host ~updates_info ~livepatches ~acc_rpm_updates
     =
@@ -727,7 +781,6 @@ let apply_updates' ~__context ~host ~updates_info ~livepatches ~acc_rpm_updates
       eval_guidances ~updates_info ~updates:acc_rpm_updates ~kind:Recommended
         ~livepatches:successful_livepatches ~failed_livepatches
       |> List.filter (fun g -> g <> Guidance.EvacuateHost)
-      |> fun l -> merge_with_unapplied_guidances ~__context ~host ~guidances:l
     in
     GuidanceSet.assert_valid_guidances guidances' ;
     match failed_livepatches with
@@ -742,7 +795,7 @@ let apply_updates' ~__context ~host ~updates_info ~livepatches ~acc_rpm_updates
         |> List.filter (fun g -> g <> Guidance.RebootHost)
         |> List.cons Guidance.RebootHostOnLivePatchFailure
   in
-  set_pending_guidances ~__context ~host ~guidances ;
+  update_pending_guidances ~__context ~host ~guidances ;
   List.map
     (fun (lp, _) -> [Api_errors.apply_livepatch_failed; LivePatch.to_string lp])
     failed_livepatches

@@ -36,6 +36,13 @@ module Guidance : sig
        | `restart_device_model
        | `restart_toolstack ]
     -> t
+
+  val to_update_guidance :
+       t
+    -> [> `reboot_host
+       | `reboot_host_on_livepatch_failure
+       | `restart_device_model
+       | `restart_toolstack ]
 end
 
 (** The applicability of metadata for one update in updateinfo *)
