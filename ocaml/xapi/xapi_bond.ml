@@ -195,7 +195,7 @@ let move_tunnel ~__context host new_transport_PIF old_tunnel =
   let protocol = Db.Tunnel.get_protocol ~__context ~self:old_tunnel in
   let new_tunnel, new_access_PIF =
     Xapi_tunnel.create_internal ~__context ~transport_PIF:new_transport_PIF
-      ~network ~host ~protocol
+      ~network ~host ~protocol ~cross_server:false
   in
   debug "Created new tunnel %s on bond" (Ref.string_of new_tunnel) ;
   (* Destroy old VLAN and VLAN-master objects *)

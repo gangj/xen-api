@@ -2448,7 +2448,7 @@ let sync_tunnels ~__context ~host =
           (* this is the PIF on which we want as transport PIF; let's make it *)
           ignore
             (Xapi_tunnel.create_internal ~__context ~transport_PIF:pif_ref
-               ~network:master_pif_rec.API.pIF_network ~host ~protocol
+               ~network:master_pif_rec.API.pIF_network ~host ~cross_server:false ~protocol
             )
       | _ ->
           (* This should never happen cos we should never have more than one of _our_ pifs

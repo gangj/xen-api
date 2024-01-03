@@ -22,7 +22,7 @@ let test_create_internal () =
   let network = T.make_network ~__context ~bridge:"xapi0" () in
   let tunnel, access_PIF =
     Xapi_tunnel.create_internal ~__context ~transport_PIF ~network ~host
-      ~protocol:`gre
+      ~protocol:`gre ~cross_server:false
   in
   Alcotest.check
     (Alcotest_comparators.ref ())
@@ -59,7 +59,7 @@ let test_create_on_unmanaged_pif () =
   Alcotest.check_raises "test_create_on_unmanaged_pif"
     Api_errors.(Server_error (pif_unmanaged, [Ref.string_of transport_PIF]))
     (fun () ->
-      Xapi_tunnel.create ~__context ~transport_PIF ~network ~protocol:`gre
+      Xapi_tunnel.create ~__context ~transport_PIF ~network ~protocol:`gre ~cross_server:false
       |> ignore
     )
 
@@ -78,7 +78,7 @@ let test_create_network_already_connected () =
         )
     )
     (fun () ->
-      Xapi_tunnel.create ~__context ~transport_PIF ~network ~protocol:`gre
+      Xapi_tunnel.create ~__context ~transport_PIF ~network ~protocol:`gre ~cross_server:false
       |> ignore
     )
 
@@ -97,7 +97,7 @@ let test_create_on_bond_slave () =
         (cannot_add_tunnel_to_bond_slave, [Ref.string_of transport_PIF])
     )
     (fun () ->
-      Xapi_tunnel.create ~__context ~transport_PIF ~network ~protocol:`gre
+      Xapi_tunnel.create ~__context ~transport_PIF ~network ~protocol:`gre ~cross_server:false
       |> ignore
     )
 
@@ -111,7 +111,7 @@ let test_create_on_tunnel_access () =
     Api_errors.(Server_error (is_tunnel_access_pif, [Ref.string_of access_PIF]))
     (fun () ->
       Xapi_tunnel.create ~__context ~transport_PIF:access_PIF ~network
-        ~protocol:`gre
+        ~protocol:`gre ~cross_server:false
       |> ignore
     )
 
@@ -128,7 +128,7 @@ let test_create_on_sriov_logical () =
     )
     (fun () ->
       Xapi_tunnel.create ~__context ~transport_PIF:sriov_logical_PIF ~network
-        ~protocol:`gre
+        ~protocol:`gre ~cross_server:false
       |> ignore
     )
 
@@ -149,7 +149,7 @@ let test_create_on_vlan_on_sriov_logical () =
         )
     )
     (fun () ->
-      Xapi_tunnel.create ~__context ~transport_PIF ~network ~protocol:`gre
+      Xapi_tunnel.create ~__context ~transport_PIF ~network ~protocol:`gre ~cross_server:false
       |> ignore
     )
 
@@ -174,7 +174,7 @@ let test_create_tunnel_into_sriov_network () =
     )
     (fun () ->
       Xapi_tunnel.create ~__context ~transport_PIF:pif ~network:sriov_network
-        ~protocol:`gre
+        ~protocol:`gre ~cross_server:false
       |> ignore
     )
 
@@ -202,7 +202,7 @@ let test_create_tunnel_into_sriov_vlan_network () =
     )
     (fun () ->
       Xapi_tunnel.create ~__context ~transport_PIF:pif
-        ~network:sriov_vlan_network ~protocol:`gre
+        ~network:sriov_vlan_network ~protocol:`gre ~cross_server:false
       |> ignore
     )
 
