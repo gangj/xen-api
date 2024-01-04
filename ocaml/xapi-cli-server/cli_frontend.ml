@@ -1047,6 +1047,15 @@ let rec cmdtable_data : (string * cmd_spec) list =
       ; flags= [Neverforward]
       }
     )
+  ; ( "host-show-updates"
+    , {
+        reqd= []
+      ; optn= []
+      ; help= "Show available updates for a specified host."
+      ; implementation= With_fd Cli_operations.host_show_updates
+      ; flags= [Host_selectors]
+      }
+    )
   ; ( "patch-upload"
     , {
         reqd= ["file-name"]
