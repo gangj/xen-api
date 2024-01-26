@@ -5680,6 +5680,56 @@ let vm_import fd _printer rpc session_id params =
     in
     marshal fd (Command (Print (String.concat "," uuids)))
 
+let get_bloburi ~session_id ~task ~blob_ref =
+    Printf.sprintf "%s?session_id=%s&task_id=%s&ref=%s" Constants.blob_uri
+      (Ref.string_of session_id) (Ref.string_of task)
+      (Ref.string_of blob_ref)
+
+let command_in_task ~rpc ~session_id ~fd ~label ~quiet_on_success f =
+  let task =
+    Client.Task.create ~rpc ~session_id
+      ~label
+      ~description:""
+  in
+  Client.Task.set_progress ~rpc ~session_id ~self:task ~value:(-1.0) ;
+  let command = f task in
+  finally
+    (fun () ->
+      marshal fd (Command command) ;
+      let response = ref (Response Wait) in
+      while !response = Response Wait do
+        response := unmarshal fd
+      done ;
+      let ok =
+        match !response with
+        | Response OK ->
+            true
+        | Response Failed ->
+            (* Need to check whether the thin cli managed to contact the server
+             * or not. If not, we need to mark the task as failed.
+             *)
+            if Client.Task.get_progress ~rpc ~session_id ~self:task < 0.0 then
+              Client.Task.set_status ~rpc ~session_id ~self:task ~value:`failure ;
+            false
+        | _ ->
+            false
+      in
+      wait_for_task_complete rpc session_id task ;
+      check_task_status ~rpc ~session_id ~task ~fd ~label ~ok
+        ~quiet_on_success ()
+    )
+    (fun () -> Client.Task.destroy ~rpc ~session_id ~self:task)
+
+let blob_get fd _printer rpc session_id params =
+  let filename = List.assoc "filename" params in
+  let blob_uuid = List.assoc "uuid" params in
+  let blob_ref = Client.Blob.get_by_uuid ~rpc ~session_id ~uuid:blob_uuid in
+  command_in_task ~rpc ~session_id ~fd ~label:(Printf.sprintf "Obtaining blob, ref=%s" (Ref.string_of blob_ref)) ~quiet_on_success:false
+    (fun task ->
+      HttpGet (filename, (get_bloburi ~session_id ~task ~blob_ref))
+  )
+
+(*
 let blob_get fd _printer rpc session_id params =
   let blob_uuid = List.assoc "uuid" params in
   let blob_ref = Client.Blob.get_by_uuid ~rpc ~session_id ~uuid:blob_uuid in
@@ -5720,6 +5770,7 @@ let blob_get fd _printer rpc session_id params =
         ~ok ()
     )
     (fun () -> Client.Task.destroy ~rpc ~session_id ~self:blobtask)
+*)
 
 let blob_put fd _printer rpc session_id params =
   let blob_uuid = List.assoc "uuid" params in
@@ -7654,14 +7705,15 @@ let get_avail_updates_uri ~session_id ~task ~host =
   in
   Uri.make ~path:Constants.get_updates_uri ~query () |> Uri.to_string
 
-let command_in_task ~rpc ~session_id ~fd ~host ~label f =
+(*
+let command_in_task ~rpc ~session_id ~fd ~label f =
   let task =
     Client.Task.create ~rpc ~session_id
-      ~label:(Printf.sprintf "%s for host (ref=%s)" label (Ref.string_of host))
+      ~label
       ~description:""
   in
   Client.Task.set_progress ~rpc ~session_id ~self:task ~value:(-1.0) ;
-  let command = f session_id task host in
+  let command = f task in
   finally
     (fun () ->
       marshal fd (Command command) ;
@@ -7688,16 +7740,17 @@ let command_in_task ~rpc ~session_id ~fd ~host ~label f =
         ~quiet_on_success:true ()
     )
     (fun () -> Client.Task.destroy ~rpc ~session_id ~self:task)
+*)
 
 let print_avail_updates ~rpc ~session_id ~fd ~host =
-  command_in_task ~rpc ~session_id ~fd ~host ~label:"Print available updates"
-    (fun session_id task host ->
+  command_in_task ~rpc ~session_id ~fd ~label:(Printf.sprintf "Print available updates for host (ref=%s)" (Ref.string_of host)) ~quiet_on_success:true
+    (fun task ->
       PrintHttpGetJson (get_avail_updates_uri ~session_id ~task ~host)
   )
 
 let print_update_guidance ~rpc ~session_id ~fd ~host =
-  command_in_task ~rpc ~session_id ~fd ~host ~label:"Print update guidance"
-    (fun session_id task host ->
+  command_in_task ~rpc ~session_id ~fd ~label:(Printf.sprintf "Print update guidance for host (ref=%s)" (Ref.string_of host)) ~quiet_on_success:true
+    (fun task ->
       PrintUpdateGuidance (get_avail_updates_uri ~session_id ~task ~host)
   )
 
