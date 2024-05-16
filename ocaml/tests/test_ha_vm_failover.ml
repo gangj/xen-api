@@ -709,22 +709,10 @@ let extract_output_for_anti_affinity_plan __context pool anti_affinity_plan =
        )
     |> Xapi_ha_vm_failover.anti_affinity_vms_increasing ~__context
   in
-  let hosts =
-    Db.Host.get_all ~__context
-    |> List.filter (fun h ->
-           h <> slv1 && Db.Host.get_name_label ~__context ~self:h <> "localhost"
-       )
-    |> List.map (fun host ->
-           (host, Xapi_ha_vm_failover.host_free_memory ~__context ~host)
-       )
-  in
-  let pool_state =
-    Xapi_ha_vm_failover.init_anti_affinity_pool_state ~__context hosts
-  in
   try
     anti_affinity_plan ~__context
       (vm_can_boot_on_host ~__context pool)
-      slave1_anti_affinity_vms pool_state []
+      slave1_anti_affinity_vms []
     |> List.map (fun (vm, host) ->
            ( Db.VM.get_name_label ~__context ~self:vm
            , Db.Host.get_name_label ~__context ~self:host
@@ -1216,8 +1204,26 @@ Generic.MakeStateful (struct
   let load_input __context = setup ~__context
 
   let extract_output __context pool =
+    let slv1 =
+      Db.Host.get_all ~__context
+      |> List.find (fun self -> Db.Host.get_name_label ~__context ~self = slave1)
+    in
+    let hosts =
+      Db.Host.get_all ~__context
+      |> List.filter (fun h ->
+             h <> slv1
+             && Db.Host.get_name_label ~__context ~self:h <> "localhost"
+         )
+      |> List.map (fun host ->
+             (host, Xapi_ha_vm_failover.host_free_memory ~__context ~host)
+         )
+    in
+    let pool_state =
+      Xapi_ha_vm_failover.init_anti_affinity_spread_evenly_pool_state ~__context
+        hosts
+    in
     extract_output_for_anti_affinity_plan __context pool
-      Xapi_ha_vm_failover.vm_anti_affinity_spread_evenly_plan
+      (Xapi_ha_vm_failover.vm_anti_affinity_spread_evenly_plan pool_state)
 
   let tests =
     `QuickAndAutoDocumented
@@ -1251,8 +1257,29 @@ module Slave1EvacuationVMAntiAffinityNoBreachPlan = Generic.MakeStateful (struct
          )
       |> List.length
     in
+    let slv1 =
+      Db.Host.get_all ~__context
+      |> List.find (fun self -> Db.Host.get_name_label ~__context ~self = slave1)
+    in
+    let hosts =
+      Db.Host.get_all ~__context
+      |> List.filter (fun h ->
+             h <> slv1
+             && Db.Host.get_name_label ~__context ~self:h <> "localhost"
+         )
+      |> List.map (fun host ->
+             (host, Xapi_ha_vm_failover.host_free_memory ~__context ~host)
+         )
+    in
+    let pool_state =
+      Xapi_ha_vm_failover.init_anti_affinity_spread_evenly_pool_state ~__context
+        hosts
+      |> Xapi_ha_vm_failover.init_anti_affinity_no_breach_pool_state
+    in
     extract_output_for_anti_affinity_plan __context pool
-      (Xapi_ha_vm_failover.vm_anti_affinity_no_breach_plan total_hosts)
+      (Xapi_ha_vm_failover.vm_anti_affinity_no_breach_plan total_hosts
+         pool_state
+      )
 
   let tests =
     `QuickAndAutoDocumented
