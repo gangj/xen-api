@@ -1219,11 +1219,11 @@ Generic.MakeStateful (struct
          )
     in
     let pool_state =
-      Xapi_ha_vm_failover.init_anti_affinity_spread_evenly_pool_state ~__context
+      Xapi_ha_vm_failover.init_spread_evenly_pool_state ~__context
         hosts
     in
     extract_output_for_anti_affinity_plan __context pool
-      (Xapi_ha_vm_failover.vm_anti_affinity_spread_evenly_plan pool_state)
+      (Xapi_ha_vm_failover.compute_spread_evenly_plan pool_state)
 
   let tests =
     `QuickAndAutoDocumented
@@ -1272,12 +1272,12 @@ module Slave1EvacuationVMAntiAffinityNoBreachPlan = Generic.MakeStateful (struct
          )
     in
     let pool_state =
-      Xapi_ha_vm_failover.init_anti_affinity_spread_evenly_pool_state ~__context
+      Xapi_ha_vm_failover.init_spread_evenly_pool_state ~__context
         hosts
-      |> Xapi_ha_vm_failover.init_anti_affinity_no_breach_pool_state
+      |> Xapi_ha_vm_failover.init_no_breach_pool_state
     in
     extract_output_for_anti_affinity_plan __context pool
-      (Xapi_ha_vm_failover.vm_anti_affinity_no_breach_plan total_hosts
+      (Xapi_ha_vm_failover.compute_no_breach_plan total_hosts
          pool_state
       )
 
@@ -1331,7 +1331,7 @@ module Slave1EvacuationPlan = Generic.MakeStateful (struct
              (host, Xapi_ha_vm_failover.host_free_memory ~__context ~host)
          )
     in
-    Xapi_ha_vm_failover.vm_anti_affinity_evacuation_plan ~__context
+    Xapi_ha_vm_failover.compute_anti_affinity_evacuation_plan ~__context
       (List.length all_hosts) hosts slave1_vms
       (vm_can_boot_on_host ~__context pool)
     |> List.map (fun (vm, host) ->

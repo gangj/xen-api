@@ -93,36 +93,36 @@ module VMGroupMap : Map.S with type key = [`VM_group] Ref.t
 
 module HostsSet : Set.S with type elt = int * int64 * API.ref_host
 
-type anti_affinity_spread_evenly_pool_state = {
+type spread_evenly_pool_state = {
     host_size_map: int64 Xapi_vm_helpers.HostMap.t
   ; grp_host_vm_cnt_map: int Xapi_vm_helpers.HostMap.t VMGroupMap.t
   ; grp_hosts_set: HostsSet.t VMGroupMap.t
 }
 
-type anti_affinity_no_breach_pool_state = {
+type no_breach_pool_state = {
     host_size_map': int64 Xapi_vm_helpers.HostMap.t
   ; grp_no_resident_hosts_set: HostsSet.t VMGroupMap.t
   ; grp_resident_hosts_count_map: int VMGroupMap.t
 }
 
-val vm_anti_affinity_spread_evenly_plan :
+val compute_spread_evenly_plan :
      __context:Context.t
-  -> anti_affinity_spread_evenly_pool_state
+  -> spread_evenly_pool_state
   -> (API.ref_VM -> API.ref_host -> bool)
   -> (API.ref_VM * int64 * API.ref_VM_group) list
   -> (API.ref_VM * API.ref_host) list
   -> (API.ref_VM * API.ref_host) list
 
-val vm_anti_affinity_no_breach_plan :
+val compute_no_breach_plan :
      __context:Context.t
   -> int
-  -> anti_affinity_no_breach_pool_state
+  -> no_breach_pool_state
   -> (API.ref_VM -> API.ref_host -> bool)
   -> (API.ref_VM * int64 * API.ref_VM_group) list
   -> (API.ref_VM * API.ref_host) list
   -> (API.ref_VM * API.ref_host) list
 
-val vm_anti_affinity_evacuation_plan :
+val compute_anti_affinity_evacuation_plan :
      __context:Context.t
   -> int
   -> (API.ref_host * int64) list
@@ -139,10 +139,10 @@ val anti_affinity_vms_increasing :
   -> (API.ref_VM * 'a) list
   -> (API.ref_VM * 'a * API.ref_VM_group) list
 
-val init_anti_affinity_spread_evenly_pool_state :
+val init_spread_evenly_pool_state :
      __context:Context.t
   -> (API.ref_host * int64) list
-  -> anti_affinity_spread_evenly_pool_state
+  -> spread_evenly_pool_state
 
-val init_anti_affinity_no_breach_pool_state :
-  anti_affinity_spread_evenly_pool_state -> anti_affinity_no_breach_pool_state
+val init_no_breach_pool_state :
+  spread_evenly_pool_state -> no_breach_pool_state
