@@ -218,13 +218,13 @@ let vm_memory ~__context snapshot =
   in
   total_memory_of_vm ~__context policy snapshot
 
-type anti_affinity_spread_evenly_pool_state = {
+type spread_evenly_pool_state = {
     host_size_map: int64 Xapi_vm_helpers.HostMap.t
   ; grp_host_vm_cnt_map: int Xapi_vm_helpers.HostMap.t VMGroupMap.t
   ; grp_hosts_set: HostsSet.t VMGroupMap.t
 }
 
-type anti_affinity_no_breach_pool_state = {
+type no_breach_pool_state = {
     host_size_map': int64 Xapi_vm_helpers.HostMap.t
   ; grp_no_resident_hosts_set: HostsSet.t VMGroupMap.t
   ; grp_resident_hosts_count_map: int VMGroupMap.t
@@ -246,7 +246,7 @@ let anti_affinity_grps ~__context =
          Db.VM_group.get_placement ~__context ~self:group = `anti_affinity
      )
 
-let init_anti_affinity_grp_host_vm_cnt_map ~__context =
+let init_grp_host_vm_cnt_map ~__context =
   anti_affinity_grps ~__context
   |> List.fold_left
        (fun grp_to_host_vm_cnt_map grp ->
@@ -256,7 +256,7 @@ let init_anti_affinity_grp_host_vm_cnt_map ~__context =
        )
        VMGroupMap.empty
 
-let update_anti_affinity_grp_host_vm_cnt_map group host grp_host_vm_cnt_map =
+let update_grp_host_vm_cnt_map group host grp_host_vm_cnt_map =
   VMGroupMap.update group
     (fun host_vm_cnt_map ->
       Xapi_vm_helpers.HostMap.update host
@@ -266,7 +266,7 @@ let update_anti_affinity_grp_host_vm_cnt_map group host grp_host_vm_cnt_map =
     )
     grp_host_vm_cnt_map
 
-let init_anti_affinity_grp_hosts_set ~__context grp_host_vm_cnt_map hosts =
+let init_grp_hosts_set ~__context grp_host_vm_cnt_map hosts =
   anti_affinity_grps ~__context
   |> List.fold_left
        (fun grp_to_hosts_map grp ->
@@ -286,7 +286,7 @@ let init_anti_affinity_grp_hosts_set ~__context grp_host_vm_cnt_map hosts =
        )
        VMGroupMap.empty
 
-let update_anti_affinity_grp_hosts_set vm_size group host host_size
+let update_grp_hosts_set vm_size group host host_size
     grp_host_vm_cnt_map grp_hosts_set =
   let original_vm_cnt grp =
     VMGroupMap.find grp grp_host_vm_cnt_map
@@ -308,15 +308,15 @@ let update_anti_affinity_grp_hosts_set vm_size group host host_size
     )
     grp_hosts_set
 
-let init_anti_affinity_spread_evenly_pool_state ~__context hosts =
+let init_spread_evenly_pool_state ~__context hosts =
   let host_size_map = init_host_size_map hosts in
-  let grp_host_vm_cnt_map = init_anti_affinity_grp_host_vm_cnt_map ~__context in
+  let grp_host_vm_cnt_map = init_grp_host_vm_cnt_map ~__context in
   let grp_hosts_set =
-    init_anti_affinity_grp_hosts_set ~__context grp_host_vm_cnt_map hosts
+    init_grp_hosts_set ~__context grp_host_vm_cnt_map hosts
   in
   {host_size_map; grp_host_vm_cnt_map; grp_hosts_set}
 
-let update_anti_affinity_spread_evenly_pool_state vm_size group host pool_state
+let update_spread_evenly_pool_state vm_size group host pool_state
     =
   let original_host_size =
     Xapi_vm_helpers.HostMap.find host pool_state.host_size_map
@@ -325,14 +325,14 @@ let update_anti_affinity_spread_evenly_pool_state vm_size group host pool_state
     host_size_map= pool_state.host_size_map |> update_host_size_map host vm_size
   ; grp_host_vm_cnt_map=
       pool_state.grp_host_vm_cnt_map
-      |> update_anti_affinity_grp_host_vm_cnt_map group host
+      |> update_grp_host_vm_cnt_map group host
   ; grp_hosts_set=
       pool_state.grp_hosts_set
-      |> update_anti_affinity_grp_hosts_set vm_size group host
+      |> update_grp_hosts_set vm_size group host
            original_host_size pool_state.grp_host_vm_cnt_map
   }
 
-let init_anti_affinity_no_breach_pool_state spread_evenly_pool_state =
+let init_no_breach_pool_state spread_evenly_pool_state =
   let host_size_map' = spread_evenly_pool_state.host_size_map in
   let grp_no_resident_hosts_set =
     spread_evenly_pool_state.grp_hosts_set
@@ -349,7 +349,7 @@ let init_anti_affinity_no_breach_pool_state spread_evenly_pool_state =
   in
   {host_size_map'; grp_no_resident_hosts_set; grp_resident_hosts_count_map}
 
-let update_anti_affinity_grp_no_resident_hosts_set vm_size group host host_size
+let update_grp_no_resident_hosts_set vm_size group host host_size
     grp_no_resident_hosts_set =
   let updated_host_size = Int64.sub host_size vm_size in
   VMGroupMap.mapi
@@ -369,7 +369,7 @@ let update_anti_affinity_grp_no_resident_hosts_set vm_size group host host_size
     )
     grp_no_resident_hosts_set
 
-let update_anti_affinity_no_breach_pool_state vm_size group host pool_state =
+let update_no_breach_pool_state vm_size group host pool_state =
   let original_host_size =
     Xapi_vm_helpers.HostMap.find host pool_state.host_size_map'
   in
@@ -378,7 +378,7 @@ let update_anti_affinity_no_breach_pool_state vm_size group host pool_state =
       pool_state.host_size_map' |> update_host_size_map host vm_size
   ; grp_no_resident_hosts_set=
       pool_state.grp_no_resident_hosts_set
-      |> update_anti_affinity_grp_no_resident_hosts_set vm_size group host
+      |> update_grp_no_resident_hosts_set vm_size group host
            original_host_size
   ; grp_resident_hosts_count_map=
       pool_state.grp_resident_hosts_count_map
@@ -405,15 +405,15 @@ let rec select_host_for_spread_evenly_plan vm vm_size vm_can_boot_on_host
   )
 
 let rec select_host_for_no_breach_plan vm vm_size vm_can_boot_on_host
-    no_resident_hosts_set =
-  match HostsSet.min_elt_opt no_resident_hosts_set with
+    hosts_set =
+  match HostsSet.min_elt_opt hosts_set with
   | Some (0, host_size, host) -> (
     match (vm_size <= host_size, vm_can_boot_on_host vm host) with
     | true, true ->
         Some host
     | _, _ ->
         select_host_for_no_breach_plan vm vm_size vm_can_boot_on_host
-          (HostsSet.remove (0, host_size, host) no_resident_hosts_set)
+          (HostsSet.remove (0, host_size, host) hosts_set)
   )
   | _ ->
       None
@@ -425,9 +425,9 @@ let rec select_host_for_no_breach_plan vm vm_size vm_can_boot_on_host
     2. For each anti-affinity VM, select a host which can run it, and which has the least VMs in the
        same anti-affinity group running on it, for the hosts with the same number of running VMs in
        that group, pick the one with the least free memory. *)
-let rec vm_anti_affinity_spread_evenly_plan ~__context pool_state
+let rec compute_spread_evenly_plan ~__context pool_state
     vm_can_boot_on_host anti_affinity_vms mapping =
-  debug "vm_anti_affinity_spread_evenly_plan" ;
+  debug "compute_spread_evenly_plan" ;
   match anti_affinity_vms with
   | [] ->
       mapping
@@ -452,9 +452,9 @@ let rec vm_anti_affinity_spread_evenly_plan ~__context pool_state
              which can run the vm: (%s %s)."
             (Ref.string_of h)
             (Db.Host.get_name_label ~__context ~self:h) ;
-          vm_anti_affinity_spread_evenly_plan ~__context
+          compute_spread_evenly_plan ~__context
             (pool_state
-            |> update_anti_affinity_spread_evenly_pool_state vm_size group h
+            |> update_spread_evenly_pool_state vm_size group h
             )
             vm_can_boot_on_host remaining_vms ((vm, h) :: mapping)
     )
@@ -466,9 +466,9 @@ let rec vm_anti_affinity_spread_evenly_plan ~__context pool_state
     2. For each anti-affinity VM, try to select a host for it so that there are at least 2 hosts which
        has running VMs in the same anti-affinity group. If there are already 2 hosts having running VMs
        in that group, skip planning for the VM. *)
-let rec vm_anti_affinity_no_breach_plan ~__context total_hosts pool_state
+let rec compute_no_breach_plan ~__context total_hosts pool_state
     vm_can_boot_on_host anti_affinity_vms mapping =
-  debug "vm_anti_affinity_no_breach_plan" ;
+  debug "compute_no_breach_plan" ;
   match (total_hosts, anti_affinity_vms) with
   | not_enough, _ when not_enough < 3 ->
       debug
@@ -514,16 +514,16 @@ let rec vm_anti_affinity_no_breach_plan ~__context total_hosts pool_state
             info
               "No breach plan: failed to select host on any of the no resident \
                hosts, skip it, continue with the next VM." ;
-            vm_anti_affinity_no_breach_plan ~__context total_hosts pool_state
+            compute_no_breach_plan ~__context total_hosts pool_state
               vm_can_boot_on_host remaining_vms mapping
         | Some h ->
             debug
               "No breach plan: choose the no resident host with the least free \
                memory which can run the vm: (%s)."
               (Db.Host.get_name_label ~__context ~self:h) ;
-            vm_anti_affinity_no_breach_plan ~__context total_hosts
+            compute_no_breach_plan ~__context total_hosts
               (pool_state
-              |> update_anti_affinity_no_breach_pool_state vm_size group h
+              |> update_no_breach_pool_state vm_size group h
               )
               vm_can_boot_on_host remaining_vms ((vm, h) :: mapping)
       ) else (
@@ -531,7 +531,7 @@ let rec vm_anti_affinity_no_breach_plan ~__context total_hosts pool_state
           "No breach plan: no need to plan for the VM as the number of hosts \
            which has running VMs from the same group is no less than 2, \
            continue to plan for the next one." ;
-        vm_anti_affinity_no_breach_plan ~__context total_hosts pool_state
+        compute_no_breach_plan ~__context total_hosts pool_state
           vm_can_boot_on_host remaining_vms mapping
       )
 
@@ -552,7 +552,7 @@ let anti_affinity_vms_increasing ~__context vms =
     2. Try to get a "no breach" plan for anti-affinity VMs, and then a binpack plan for the
        rest of VMs. Done if every VM got planned, otherwise continue.
     3. Carry out a binpack plan ignoring VM anti-affinity. *)
-let vm_anti_affinity_evacuation_plan ~__context total_hosts hosts vms
+let compute_anti_affinity_evacuation_plan ~__context total_hosts hosts vms
     vm_can_boot_on_host =
   let config =
     {Binpack.hosts; vms; placement= []; total_hosts; num_failures= 1}
@@ -562,11 +562,11 @@ let vm_anti_affinity_evacuation_plan ~__context total_hosts hosts vms
   let anti_affinity_vms = vms |> anti_affinity_vms_increasing ~__context in
 
   let spread_evenly_pool_state =
-    init_anti_affinity_spread_evenly_pool_state ~__context hosts
+    init_spread_evenly_pool_state ~__context hosts
   in
 
   let no_breach_pool_state =
-    init_anti_affinity_no_breach_pool_state spread_evenly_pool_state
+    init_no_breach_pool_state spread_evenly_pool_state
   in
 
   let binpack_plan ~__context config vms =
@@ -650,9 +650,9 @@ let vm_anti_affinity_evacuation_plan ~__context total_hosts hosts vms
   in
   plan_in_steps ~__context
     [
-      vm_anti_affinity_spread_evenly_plan spread_evenly_pool_state
+      compute_spread_evenly_plan spread_evenly_pool_state
         vm_can_boot_on_host anti_affinity_vms []
-    ; vm_anti_affinity_no_breach_plan total_hosts no_breach_pool_state
+    ; compute_no_breach_plan total_hosts no_breach_pool_state
         vm_can_boot_on_host anti_affinity_vms []
     ]
 
@@ -695,11 +695,11 @@ let compute_evacuation_plan ~__context total_hosts remaining_hosts
       false
   in
   match
-    vm_anti_affinity_evacuation_plan ~__context total_hosts hosts vms
+    compute_anti_affinity_evacuation_plan ~__context total_hosts hosts vms
       vm_can_boot_on_host
   with
   | (exception Not_found) | (exception Invalid_argument _) ->
-      error "Data conrupted in vm_anti_affinity_evacuation_plan." ;
+      error "Data conrupted in compute_anti_affinity_evacuation_plan." ;
       raise (Api_errors.Server_error (Api_errors.internal_error, []))
   | p ->
       p
