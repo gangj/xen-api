@@ -3,7 +3,7 @@ Xapi Project's XenAPI Management Toolstack
 
 ![Build](https://github.com/xapi-project/xen-api/actions/workflows/main.yml/badge.svg?branch=master)
 
-Xen API (or xapi) is a management stack that configures and controls
+Xen API (or XAPi) is a management stack that configures and controls
 Xen-enabled hosts and resource pools, and coordinates resources
 within the pool. Xapi exposes the Xen API interface for many
 languages and is a component of the XenServer project.
