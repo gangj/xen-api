@@ -1,9 +1,9 @@
-Xapi Project's XenAPI Management Toolstack
+Xapi Project's Xen API Management Toolstack
 ==========================================
 
 ![Build](https://github.com/xapi-project/xen-api/actions/workflows/main.yml/badge.svg?branch=master)
 
-Xen API (or xapi) is a management stack that configures and controls
+Xen API (or XAPI) is a management stack that configures and controls
 Xen-enabled hosts and resource pools, and coordinates resources
 within the pool. Xapi exposes the Xen API interface for many
 languages and is a component of the XenServer project.
@@ -102,8 +102,8 @@ Contributions
 To contribute patches to xen-api, please fork the repository on
 Github, and then submit a pull request. If for some reason you can't
 use Github to submit a pull request, then you may send your patch for
-review to the [xen-api@lists.xenproject.org mailing list](http://www.xenproject.org/help/mailing-list.html), with a link to a
-public git repository for review. We much prefer Github pull requests,
+review to the [xen-api@lists.xenproject.org mailing list](http://www.xenproject.org/help/mailing-list.html),
+with a link to a public git repository for review. We much prefer Github pull requests,
 however, and submitting a patch to the mailing list will take much
 more time for review.
 
