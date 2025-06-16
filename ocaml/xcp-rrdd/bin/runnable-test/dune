@@ -1,0 +1,14 @@
+(executable
+  (modes exe)
+  (name runnable_test)
+  (libraries
+    xapi-log
+    xenctrl
+  )
+)
+
+(install
+  (package xapi)
+  (files (runnable_test.exe as xcp-rrdd-plugins/runnable-test-XEN_DOMCTL_get_runstate_info))
+  (section libexec_root)
+)
